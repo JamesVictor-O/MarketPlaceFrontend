@@ -1,54 +1,49 @@
-# React + TypeScript + Vite
+## Web3 Car Marketplace - Frontend Documentation
+A decentralized marketplace for buying and selling vehicles using blockchain technology and NFTs. This frontend is built with React Router DOM, TypeScript, TailwindCSS, and Viem for seamless blockchain integration.
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## 📋 Project Overview
+This project provides a user-friendly interface for interacting with the decentralized car marketplace. The frontend allows users to:
 
-Currently, two official plugins are available:
+Register as a dealer
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+Mint vehicle NFTs
 
-## Expanding the ESLint configuration
+List vehicles for sale
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+Browse and purchase vehicles
 
-```js
-export default tseslint.config({
-  extends: [
-    // Remove ...tseslint.configs.recommended and replace with this
-    ...tseslint.configs.recommendedTypeChecked,
-    // Alternatively, use this for stricter rules
-    ...tseslint.configs.strictTypeChecked,
-    // Optionally, add this for stylistic rules
-    ...tseslint.configs.stylisticTypeChecked,
-  ],
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
-```
+View vehicle history and ownership details
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## 🚀 Key Features
+User Interface
+**Responsive Design**: Built with TailwindCSS for a modern, mobile-first experience.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+**Dynamic Routing**: Utilizes React Router DOM for seamless navigation.
 
-export default tseslint.config({
-  plugins: {
-    // Add the react-x and react-dom plugins
-    'react-x': reactX,
-    'react-dom': reactDom,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended typescript rules
-    ...reactX.configs['recommended-typescript'].rules,
-    ...reactDom.configs.recommended.rules,
-  },
-})
-```
+**Type Safety**: Written in TypeScript for better developer experience and fewer runtime errors.
+
+## Blockchain Integration
+**Viem Integration**: Lightweight and efficient Ethereum library for interacting with smart contracts.
+
+**Wallet Connection**: Supports MetaMask and other Ethereum-compatible wallets.
+
+**Real-Time Updates**: Listens to blockchain events for real-time UI updates.
+
+## Core Functionality
+**Dealer Registration**: Register as a dealer and pay the required fee.
+
+**Vehicle Listing**: Mint NFTs for vehicles and list them for sale.
+
+**Vehicle Purchase**: Browse and purchase vehicles directly from the marketplace.
+
+**Vehicle History**: View detailed history and ownership records of vehicles.
+
+## 🛠️ Development Setup
+Prerequisites
+Node.js (v18 or higher)
+
+npm or yarn
+
+MetaMask or any Ethereum-compatible wallet
+
+IPFS account (e.g., Pinata) for metadata storage
