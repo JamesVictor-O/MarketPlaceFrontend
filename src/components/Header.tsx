@@ -1,4 +1,5 @@
 import { ConnectButton } from "@rainbow-me/rainbowkit";
+import { Link } from "react-router-dom";
 
 // Type definitions
 type NavItem = {
@@ -9,7 +10,7 @@ type NavItem = {
 const Header = () => {
   // Navigation items
   const navItems: NavItem[] = [
-    { name: "Market", href: "#" },
+    { name: "Market", href: "buyersPage" },
     { name: "Features", href: "#" },
     { name: "Community", href: "#" },
   ];
@@ -20,7 +21,9 @@ const Header = () => {
       <header className="relative z-10 px-16 py-6  border-black shadow-2xl bg-gradient-to-br from-gray-900 to-blue-900">
         <nav className="flex items-center justify-between">
           <div className="flex items-center">
-            <div className="text-2xl font-bold flex items-center">
+          <Link to={"/"}>
+          <div className="text-2xl font-bold flex items-center">
+              
               <span className="text-blue-400">Wheel</span>
               <span className="text-white">Quest</span>
               <span className="ml-2 inline-flex items-center justify-center w-6 h-6 bg-blue-500 rounded-md">
@@ -32,6 +35,8 @@ const Header = () => {
                 </svg>
               </span>
             </div>
+          </Link>
+        
           </div>
 
           <div className="hidden md:flex items-center space-x-8">

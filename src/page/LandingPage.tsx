@@ -8,7 +8,6 @@ import contractAbi from "./../contractAbi.json";
 import { publicClient } from "./../utils/publicClient";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 
-
 const LandingPage: React.FC = () => {
   const { address, isConnected } = useAccount();
   const [carRotation, setCarRotation] = useState<number>(0);
@@ -31,7 +30,7 @@ const LandingPage: React.FC = () => {
             functionName: "isRegistered",
             args: [address],
           }),
-        ]); 
+        ]);
         setIsRegistered(registered as boolean);
       } catch (error) {
         console.log(error);
@@ -42,17 +41,17 @@ const LandingPage: React.FC = () => {
   }, []);
 
   const handleNavigation = (e: string) => {
-    e == "Buyer" ? navigate("dealersignup") : navigate("");
+    e == "Seller" ? navigate("dealersignup") : navigate("buyersPage");
   };
 
   useEffect(() => {
     if (isRegistered) {
       navigate("dealersdashboard");
     }
-  }, [isRegistered]);
+  }, [isRegistered,address]);
 
- 
   useEffect(() => {
+    console.log(address)
     const interval = setInterval(() => {
       setCarRotation((prev) => (prev + 1) % 360);
     }, 50);
@@ -63,16 +62,17 @@ const LandingPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 to-blue-900 text-white overflow-hidden">
       {/* Hero Section */}
-      <main className="relative z-10 px-16 py-8 md:py-12 lg:py-20 flex flex-col md:flex-row items-center justify-between">
-        <div className="md:w-1/2 space-y-6">
+      <main className="relative z-10 px-16 py-8 md:py-12 lg:py-20 flex flex-col md:flex-row items-center justify-between ">
+        <div className="md:w-1/2 space-y-6 md:mt-6">
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
-            className="text-3xl text-center md:text-left md:text-5xl lg:text-6xl font-bold leading-tight"
+            className="text-3xl text-center md:text-left md:text-3xl lg:text-4xl font-bold leading-tight"
           >
-            Discover, find, and <span className="text-blue-400">sell</span>{" "}
-            extraordinary <span className="text-blue-400">vehicles</span>
+            Drive the Legacy,{" "}
+            <span className="text-blue-400">Own the Future</span>: Every Car's{" "}
+            <span className="text-blue-400">Story, Securely Tokenized</span>
           </motion.h1>
 
           <motion.p
@@ -95,15 +95,15 @@ const LandingPage: React.FC = () => {
               <div>
                 <button
                   className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-8 py-3 rounded-lg hover:from-blue-600 hover:to-purple-700 transition-all shadow-lg"
-                  onClick={() => handleNavigation("Buyer")}
+                  onClick={() => handleNavigation("Seller")}
                 >
-                  Buyer
+                  Be A Dealer
                 </button>
                 <button
                   className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-8 py-3 rounded-lg hover:from-blue-600 hover:to-purple-700 transition-all shadow-lg ml-5"
-                  onClick={() => handleNavigation("Seller")}
+                  onClick={() => handleNavigation("Buyer")}
                 >
-                  Seller
+                  Buyer A Car
                 </button>
               </div>
             ) : (

@@ -2,6 +2,7 @@ import { useState } from "react";
 import axios from "axios";
 import { CONTEACT_ADDRESS } from "./../utils/contactAddress";
 import contractAbi from "./../contractAbi.json";
+import { toast } from "react-toastify";
 import { useWriteContract } from "wagmi";
 import DisplayDealersCar from "./DisplayDealersCar";
 
@@ -24,19 +25,17 @@ interface Metadata {
   image: string;
   attributes: Array<{ trait_type: string; value: string }>;
 }
+interface HandleSubmitEvent extends React.FormEvent<HTMLFormElement> {}
 
 const DealerDashboard: React.FC = () => {
   // State variables
   const [activeTab, setActiveTab] = useState<"inventory" | "mint">("inventory");
   const [dealerCars, _setDealerCars] = useState<Car[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [error, _setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [filePreview, setFilePreview] = useState<string>("");
-  const [mintStatus, setMintStatus] = useState('');
-  
-  const { writeContract } = useWriteContract()
+  const [mintStatus, setMintStatus] = useState("");
+  const { writeContractAsync, isPending, error:isErrorWrite } = useWriteContract();
   const [carData, setCarData] = useState({
     make: "",
     model: "",
@@ -45,48 +44,48 @@ const DealerDashboard: React.FC = () => {
     price: "",
     tokenURI: "",
   });
-  
+
   // upload image on pinata
   const uploadImageToPinata = async () => {
     if (!file) return null;
-    
+
     try {
-      setMintStatus('Uploading image to IPFS via Pinata...');
+      setMintStatus("Uploading image to IPFS via Pinata...");
       // Create form data
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append("file", file);
       const metadata = JSON.stringify({
         name: `${carData.make} ${carData.model} ${carData.year}`,
       });
-      formData.append('pinataMetadata', metadata);
+      formData.append("pinataMetadata", metadata);
       const options = JSON.stringify({
         cidVersion: 0,
       });
-      formData.append('pinataOptions', options);
+      formData.append("pinataOptions", options);
       const res = await axios.post(
         "https://api.pinata.cloud/pinning/pinFileToIPFS",
         formData,
         {
           headers: {
-            'Content-Type': `multipart/form-data;`,
-            'Authorization': `Bearer ${import.meta.env.VITE_PINATA_JWT}`
-          }
+            "Content-Type": `multipart/form-data;`,
+            Authorization: `Bearer ${import.meta.env.VITE_PINATA_JWT}`,
+          },
         }
       );
-      
+
       const ipfsHash = res.data.IpfsHash;
       return ipfsHash;
     } catch (error) {
       console.error("Error uploading image to Pinata:", error);
-      setMintStatus('Failed to upload image to IPFS');
+      setMintStatus("Failed to upload image to IPFS");
       throw error;
     }
-  }; 
+  };
 
   // Create and upload metadata to Pinata
   const uploadMetadataToPinata = async (imageHash: string): Promise<string> => {
     try {
-      setMintStatus('Creating and uploading metadata to IPFS...');
+      setMintStatus("Creating and uploading metadata to IPFS...");
       const metadata: Metadata = {
         name: `${carData.make} ${carData.model} ${carData.year}`,
         description: `VIN: ${carData.vin} | Make: ${carData.make} | Model: ${carData.model} | Year: ${carData.year}`,
@@ -96,34 +95,33 @@ const DealerDashboard: React.FC = () => {
           { trait_type: "Model", value: carData.model },
           { trait_type: "Year", value: carData.year.toString() },
           { trait_type: "VIN", value: carData.vin },
-          { trait_type: "Price", value: `${carData.price} ETH` }
-        ]
+          { trait_type: "Price", value: `${carData.price} ETH` },
+        ],
       };
-      
+
       // Make API request to Pinata
       const res = await axios.post(
         "https://api.pinata.cloud/pinning/pinJSONToIPFS",
         metadata,
         {
           headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${import.meta.env.VITE_PINATA_JWT}`
-          }
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${import.meta.env.VITE_PINATA_JWT}`,
+          },
         }
       );
-      
+
       const metadataHash: string = res.data.IpfsHash;
-      console.log(metadata)
+      console.log(metadata);
       return metadataHash;
-   
     } catch (error) {
       console.error("Error uploading metadata to Pinata:", error);
-      setMintStatus('Failed to upload metadata to IPFS');
+      setMintStatus("Failed to upload metadata to IPFS");
       throw error;
     }
   };
-  
-  // 
+
+ 
   const handleFileChange = (e: FileChangeEvent): void => {
     const selectedFile = e.target.files[0];
     if (selectedFile) {
@@ -135,10 +133,8 @@ const DealerDashboard: React.FC = () => {
       reader.readAsDataURL(selectedFile);
     }
   };
-  
-  interface HandleSubmitEvent extends React.FormEvent<HTMLFormElement> {}
 
-const handleSubmit = async (e: HandleSubmitEvent): Promise<void>  => {
+  const handleSubmit = async (e: HandleSubmitEvent): Promise<void> => {
     e.preventDefault();
     setIsLoading(true);
     try {
@@ -148,27 +144,36 @@ const handleSubmit = async (e: HandleSubmitEvent): Promise<void>  => {
         setIsLoading(false);
         return;
       }
-
+      
       const metadataHash = await uploadMetadataToPinata(imageHash);
       if (!metadataHash) {
         alert("Metadata upload failed");
         setIsLoading(false);
         return;
       }
-      const tokenURI = `https://ipfs.io/ipfs/${metadataHash}`
-      const result = await writeContract({
+      const tokenURI = `https://ipfs.io/ipfs/${metadataHash}`;
+      
+      setMintStatus("Submitting transaction to blockchain...");
+      const result = await writeContractAsync({
         address: CONTEACT_ADDRESS,
         abi: contractAbi,
         functionName: "mintNft",
-        args: ["tesela", carData.model, carData.year, carData.vin, carData.price, tokenURI],
+        args: [
+          "tesela",
+          carData.model,
+          carData.year,
+          carData.vin,
+          carData.price,
+          tokenURI,
+        ],
       });
-
-      console.log("Transaction result:", result);
-      // Show success popup
-     
       
-
-      // Reset form
+      if (!result) {
+        throw new Error("Transaction failed to submit");
+      }
+      
+      toast.success("NFT Mint Transaction Submitted Successfully!");
+      
       setCarData({
         make: "",
         model: "",
@@ -179,15 +184,14 @@ const handleSubmit = async (e: HandleSubmitEvent): Promise<void>  => {
       });
       setFile(null);
       setFilePreview("");
-      setSuccess("NFT minted successfully!");
-      // setShowSuccess(true);
+      toast.success("NFT mint transaction submitted successfully! Transaction hash: " + result);
     } catch (error) {
       console.error("Error in handleSubmit:", error);
+      toast.error("Error minting NFT: " + (error instanceof Error ? error.message : String(error)));
     } finally {
       setIsLoading(false);
     }
   };
-
 
   return (
     <div className="min-h-screen  bg-gradient-to-br from-gray-900 to-blue-900 text-white">
@@ -216,22 +220,9 @@ const handleSubmit = async (e: HandleSubmitEvent): Promise<void>  => {
           </button>
         </div>
 
-        {/* Error and Success Messages */}
-        {error && (
-          <div className="mb-6 p-4 bg-red-900 bg-opacity-30 rounded-lg border border-red-800 text-red-200">
-            {error}
-          </div>
-        )}
-
-        {success && (
-          <div className="mb-6 p-4 bg-green-900 bg-opacity-30 rounded-lg border border-green-800 text-green-200">
-            {success}
-          </div>
-        )}
-
         {/* Inventory Tab */}
         {activeTab === "inventory" && (
-          <DisplayDealersCar setActiveTab={setActiveTab}/>
+          <DisplayDealersCar setActiveTab={setActiveTab} />
         )}
 
         {/* Mint New Car NFT Tab */}
@@ -254,7 +245,12 @@ const handleSubmit = async (e: HandleSubmitEvent): Promise<void>  => {
                       type="text"
                       id="make"
                       value={carData.make}
-                      onChange={(e) => setCarData((prev)=>({...prev, make: e.target.value}))}
+                      onChange={(e) =>
+                        setCarData((prev) => ({
+                          ...prev,
+                          make: e.target.value,
+                        }))
+                      }
                       className="w-full px-4 py-3 rounded-lg bg-gray-700 border border-gray-600 text-white focus:ring-blue-500 focus:border-blue-500"
                       placeholder="e.g. Tesla"
                       required
@@ -272,7 +268,12 @@ const handleSubmit = async (e: HandleSubmitEvent): Promise<void>  => {
                       type="text"
                       id="model"
                       value={carData.model}
-                      onChange={(e) => setCarData((prev)=>({...prev, model: e.target.value}))}
+                      onChange={(e) =>
+                        setCarData((prev) => ({
+                          ...prev,
+                          model: e.target.value,
+                        }))
+                      }
                       className="w-full px-4 py-3 rounded-lg bg-gray-700 border border-gray-600 text-white focus:ring-blue-500 focus:border-blue-500"
                       placeholder="e.g. Model S"
                       required
@@ -290,7 +291,12 @@ const handleSubmit = async (e: HandleSubmitEvent): Promise<void>  => {
                       type="number"
                       id="year"
                       value={carData.year}
-                      onChange={(e) => setCarData((prev)=>({...prev, year: e.target.value}))}
+                      onChange={(e) =>
+                        setCarData((prev) => ({
+                          ...prev,
+                          year: e.target.value,
+                        }))
+                      }
                       className="w-full px-4 py-3 rounded-lg bg-gray-700 border border-gray-600 text-white focus:ring-blue-500 focus:border-blue-500"
                       placeholder="e.g. 2023"
                       min="1886"
@@ -310,7 +316,9 @@ const handleSubmit = async (e: HandleSubmitEvent): Promise<void>  => {
                       type="text"
                       id="vin"
                       value={carData.vin}
-                      onChange={(e) => setCarData((prev)=>({...prev, vin: e.target.value}))}
+                      onChange={(e) =>
+                        setCarData((prev) => ({ ...prev, vin: e.target.value }))
+                      }
                       className="w-full px-4 py-3 rounded-lg bg-gray-700 border border-gray-600 text-white focus:ring-blue-500 focus:border-blue-500"
                       placeholder="e.g. 1HGBH41JXMN109186"
                       required
@@ -328,7 +336,12 @@ const handleSubmit = async (e: HandleSubmitEvent): Promise<void>  => {
                       type="text"
                       id="price"
                       value={carData.price}
-                      onChange={(e) => setCarData((prev)=>({...prev, price: e.target.value}))}
+                      onChange={(e) =>
+                        setCarData((prev) => ({
+                          ...prev,
+                          price: e.target.value,
+                        }))
+                      }
                       className="w-full px-4 py-3 rounded-lg bg-gray-700 border border-gray-600 text-white focus:ring-blue-500 focus:border-blue-500"
                       placeholder="e.g. 12.5"
                       required
@@ -356,7 +369,7 @@ const handleSubmit = async (e: HandleSubmitEvent): Promise<void>  => {
                             onClick={() => {
                               setFilePreview("");
                               setFile(null);
-                              setCarData((prev)=>({...prev, tokenURI:""}));
+                              setCarData((prev) => ({ ...prev, tokenURI: "" }));
                             }}
                             className="text-sm text-red-400 hover:text-red-300"
                           >
@@ -381,7 +394,8 @@ const handleSubmit = async (e: HandleSubmitEvent): Promise<void>  => {
                             strokeLinejoin="round"
                             strokeWidth="2"
                             d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                          />Drag
+                          />
+                          Drag
                         </svg>
                         <p className="text-gray-400 text-center mb-4">
                           Drag and drop an image, or click to select a file

@@ -15,7 +15,7 @@ const DealerRegistrationForm: React.FC = ({}) => {
   const [error, setError] = useState<string | null>(null);
 
   
-  const {data, loading,error:errorRead}=useReadContract({
+  const {data, loading}=useReadContract({
        functionName:"dealerRegistrationFee",
        format: (data) => ethers.formatEther(data as bigint), 
   });
@@ -31,12 +31,10 @@ const DealerRegistrationForm: React.FC = ({}) => {
     try {
       console.log("Submitting registration...");
 
-      // Ensure the registration fee is available
+     
       if (!data) {
         throw new Error("Registration fee data is not available.");
       }
-
-      // Convert the registration fee to wei
       const registrationFeeWei = ethers.parseEther(data);
 
       const result = await writeContract({
