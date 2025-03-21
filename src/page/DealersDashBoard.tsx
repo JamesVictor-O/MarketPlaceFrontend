@@ -30,12 +30,11 @@ interface HandleSubmitEvent extends React.FormEvent<HTMLFormElement> {}
 const DealerDashboard: React.FC = () => {
   // State variables
   const [activeTab, setActiveTab] = useState<"inventory" | "mint">("inventory");
-  const [dealerCars, _setDealerCars] = useState<Car[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [file, setFile] = useState<File | null>(null);
   const [filePreview, setFilePreview] = useState<string>("");
   const [mintStatus, setMintStatus] = useState("");
-  const { writeContractAsync, isPending, error:isErrorWrite } = useWriteContract();
+  const { writeContractAsync} = useWriteContract();
   const [carData, setCarData] = useState({
     make: "",
     model: "",
@@ -185,6 +184,7 @@ const DealerDashboard: React.FC = () => {
       setFile(null);
       setFilePreview("");
       toast.success("NFT mint transaction submitted successfully! Transaction hash: " + result);
+      setActiveTab("inventory")
     } catch (error) {
       console.error("Error in handleSubmit:", error);
       toast.error("Error minting NFT: " + (error instanceof Error ? error.message : String(error)));

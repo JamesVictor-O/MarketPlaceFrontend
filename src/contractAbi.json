@@ -325,6 +325,21 @@
   },
   {
     "inputs": [
+      { "internalType": "uint256", "name": "", "type": "uint256" },
+      { "internalType": "uint256", "name": "", "type": "uint256" }
+    ],
+    "name": "carOwnershipHistory",
+    "outputs": [
+      { "internalType": "address", "name": "from", "type": "address" },
+      { "internalType": "address", "name": "to", "type": "address" },
+      { "internalType": "uint256", "name": "timestamp", "type": "uint256" },
+      { "internalType": "uint256", "name": "price", "type": "uint256" }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
       { "internalType": "address", "name": "", "type": "address" },
       { "internalType": "uint256", "name": "", "type": "uint256" }
     ],
@@ -398,6 +413,29 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "getAllMintedCars",
+    "outputs": [
+      {
+        "components": [
+          { "internalType": "uint256", "name": "id", "type": "uint256" },
+          { "internalType": "string", "name": "make", "type": "string" },
+          { "internalType": "string", "name": "model", "type": "string" },
+          { "internalType": "uint256", "name": "year", "type": "uint256" },
+          { "internalType": "string", "name": "vin", "type": "string" },
+          { "internalType": "uint256", "name": "price", "type": "uint256" },
+          { "internalType": "address", "name": "dealer", "type": "address" },
+          { "internalType": "bool", "name": "forSale", "type": "bool" }
+        ],
+        "internalType": "struct MarketPlace.CarInfo[]",
+        "name": "",
+        "type": "tuple[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       { "internalType": "uint256", "name": "tokenId", "type": "uint256" }
     ],
@@ -426,6 +464,27 @@
         "internalType": "struct MarketPlace.CarInfo",
         "name": "",
         "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "uint256", "name": "_carId", "type": "uint256" }
+    ],
+    "name": "getCarOwnershipHistory",
+    "outputs": [
+      {
+        "components": [
+          { "internalType": "address", "name": "from", "type": "address" },
+          { "internalType": "address", "name": "to", "type": "address" },
+          { "internalType": "uint256", "name": "timestamp", "type": "uint256" },
+          { "internalType": "uint256", "name": "price", "type": "uint256" }
+        ],
+        "internalType": "struct MarketPlace.OwnershipTransfer[]",
+        "name": "",
+        "type": "tuple[]"
       }
     ],
     "stateMutability": "view",

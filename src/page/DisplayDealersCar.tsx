@@ -1,12 +1,14 @@
 import { useState, useEffect } from "react";
 import { publicClient } from "./../utils/publicClient";
 import { useAccount } from "wagmi";
-import { ethers } from "ethers";
+import { formatEther } from "ethers";
+import { toast } from "react-toastify";
 import { CONTEACT_ADDRESS } from "./../utils/contactAddress";
 import { useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import contractAbi from "./../contractAbi.json";
+import { Car, Tag, Clock, Loader2, Plus, RefreshCw } from "lucide-react";
 
-interface Car {
+interface CarItem {
   id: number;
   make: string;
   model: string;
@@ -15,39 +17,43 @@ interface Car {
   price: string;
   forSale: boolean;
   imageUrl: string;
+  tokenURI?: string;
+  metadata?: any;
 }
 
 interface HandleListingParams {
   id: number;
   price: string;
+  make: string;
 }
-
+type Tab = "mint" | "inventory";
 const DisplayDealersCar = ({
   setActiveTab,
 }: {
-  setActiveTab: (tab: string) => void;
+  setActiveTab: (tab: Tab) => void; 
 }) => {
-  const [dealerCars, setDealerCars] = useState<Car[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [dealerCars, setDealerCars] = useState<CarItem[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const { address } = useAccount();
-  const { writeContract, data: hash } = useWriteContract();
+  const { writeContractAsync, data: hash } = useWriteContract();
   const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({ hash });
 
   // Fetch dealer cars
   useEffect(() => {
     const fetchData = async () => {
+      if (!address) return;
+      
+      setIsLoading(true);
       try {
-        const [AllDealerCar] = await Promise.all([
-          publicClient.readContract({
-            address: CONTEACT_ADDRESS,
-            abi: contractAbi,
-            functionName: "getCarsByDealer",
-            args: [address],
-          }),
-        ]);
+        const AllDealerCar = await publicClient.readContract({
+          address: CONTEACT_ADDRESS,
+          abi: contractAbi,
+          functionName: "getCarsByDealer",
+          args: [address],
+        });
 
         const enhancedCars = await Promise.all(
-          (AllDealerCar as Car[]).map(async (car) => {
+          (AllDealerCar as CarItem[]).map(async (car) => {
             try {
               const uri = await publicClient.readContract({
                 address: CONTEACT_ADDRESS,
@@ -73,193 +79,274 @@ const DisplayDealersCar = ({
         );
 
         setDealerCars(enhancedCars);
-        console.log(enhancedCars);
       } catch (error) {
-        console.log(error);
+        console.error("Error fetching dealer cars:", error);
+        toast.error("Failed to load your car inventory");
+      } finally {
+        setIsLoading(false);
       }
     };
 
-    if (address) {
-      fetchData();
+    fetchData();
+  }, [address, isConfirmed]);
+
+  const refreshInventory = async () => {
+    if (!address) return;
+    
+    setIsLoading(true);
+    try {
+      const AllDealerCar = await publicClient.readContract({
+        address: CONTEACT_ADDRESS,
+        abi: contractAbi,
+        functionName: "getCarsByDealer",
+        args: [address],
+      });
+
+      const enhancedCars = await Promise.all(
+        (AllDealerCar as CarItem[]).map(async (car) => {
+          try {
+            const uri = await publicClient.readContract({
+              address: CONTEACT_ADDRESS,
+              abi: contractAbi,
+              functionName: "getTokenURI",
+              args: [car.id],
+            });
+
+            const response = await fetch(uri as string);
+            const metadata = await response.json();
+
+            return {
+              ...car,
+              tokenURI: uri as string,
+              imageUrl: metadata.image,
+              metadata: metadata,
+            };
+          } catch (error) {
+            console.error(`Error fetching data for car:`, error);
+            return car;
+          }
+        })
+      );
+
+      setDealerCars(enhancedCars);
+      toast.success("Inventory refreshed successfully");
+    } catch (error) {
+      console.error("Error refreshing dealer cars:", error);
+      toast.error("Failed to refresh your car inventory");
+    } finally {
+      setIsLoading(false);
     }
-  }, [address, isConfirmed]); 
+  };
 
   // Handle listing a car
-  const handleListing = async ({ id, price }: HandleListingParams): Promise<void> => {
+  const handleListing = async ({ id, price, make }: HandleListingParams): Promise<void> => {
     try {
-     
-      writeContract({
+      const result = await writeContractAsync({
         address: CONTEACT_ADDRESS,
         abi: contractAbi,
         functionName: "listCar",
         args: [id, price],
       });
+
+      if (!result) {
+        throw new Error("Transaction failed to submit");
+      }
+      
+      toast.success(`${make} with ID #${id} has been successfully listed`);
     } catch (error) {
+      toast.error("Error listing car: " + (error instanceof Error ? error.message : String(error)));
       console.error("Error listing car:", error);
     }
   };
+
   return (
-    <>
-      <div className="mb-6 flex justify-between items-center">
-        <h2 className="text-xl font-semibold">My Car Inventory</h2>
-        <button className="flex items-center px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg hover:bg-gray-700 transition-colors">
-          <svg
-            className="w-4 h-4 mr-2"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-          >
-            <path
-              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-          Refresh
-        </button>
-      </div>
-
-      {isLoading ? (
-        <div className="flex justify-center p-12">
-          <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-        </div>
-      ) : dealerCars.length === 0 ? (
-        <div className="bg-gray-800 bg-opacity-50 border border-gray-700 rounded-xl p-12 text-center">
-          <p className="text-gray-400 mb-4">
-            You haven't minted any car NFTs yet
-          </p>
-          <button
-            onClick={() => setActiveTab("mint")}
-            className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg hover:from-blue-600 hover:to-purple-700 transition-all"
-          >
-            Mint Your First Car NFT
-          </button>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {dealerCars.map((car, index) => (
-            <div
-              key={index}
-              className="bg-gray-800 rounded-xl overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-300 border border-gray-700 flex flex-col"
-            >
-              {/* Image Container with better aspect ratio and styling */}
-              <div className="relative h-64 overflow-hidden">
-                {car.imageUrl ? (
-                  <img
-                    src={car.imageUrl}
-                    alt={`${car.make} ${car.model}`}
-                    className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
-                  />
-                ) : (
-                  <div className="w-full h-full bg-gradient-to-r from-gray-800 to-gray-700 flex items-center justify-center">
-                    <svg
-                      className="w-16 h-16 text-gray-600"
-                      fill="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z" />
-                    </svg>
-                    <span className="absolute text-gray-500 mt-20">
-                      No Image Available
-                    </span>
-                  </div>
-                )}
-
-                {/* Car number badge - repositioned and restyled */}
-                <div className="absolute top-3 left-3 bg-blue-600 text-white px-3 py-1 rounded-lg font-medium shadow-lg">
-                  #{index + 1}
-                </div>
-
-                {/* Sale status - moved to top-right for better visibility */}
-                <div className="absolute top-3 right-3">
-                  <span
-                    className={`inline-block text-sm px-3 py-1 rounded-lg font-medium shadow-lg ${
-                      car.forSale
-                        ? "bg-green-500 text-white"
-                        : "bg-gray-700 text-gray-300"
-                    }`}
-                  >
-                    {car.forSale ? "Listed for Sale" : "Not Listed"}
-                  </span>
-                </div>
+    <div className="bg-gray-900 min-h-screen">
+      <div className="max-w-7xl mx-auto px-4 py-6">
+        {/* Header with subtle gradient background */}
+        <div className="relative rounded-xl overflow-hidden mb-8">
+          <div className="absolute inset-0 bg-gradient-to-r from-blue-900/40 to-purple-900/40"></div>
+          <div className="relative p-6 backdrop-blur-sm">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div>
+                <h2 className="text-2xl font-bold text-white">My Vehicle Collection</h2>
+                <p className="text-blue-300 mt-1">Manage your minted car NFTs</p>
               </div>
+              
+              <div className="flex items-center gap-3">
+                <button 
+                  onClick={refreshInventory}
+                  disabled={isLoading}
+                  className="flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg border border-gray-700 text-white transition-all duration-200 disabled:opacity-50"
+                >
+                  <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                  Refresh
+                </button>
+                
+                <button
+                  onClick={() => setActiveTab("mint")}
+                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg text-white transition-all duration-200 hover:from-blue-700 hover:to-purple-700"
+                >
+                  <Plus className="h-4 w-4" />
+                  Mint New
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
 
-              {/* Content Section - improved spacing and hierarchy */}
-              <div className="p-5 flex-grow flex flex-col">
-                {/* Car Make and Model - enhanced typography */}
-                <h3 className="text-xl font-bold text-white mb-1 flex items-center">
-                  {car.make} <span className="mx-2 text-blue-400">•</span>{" "}
-                  {car.model}
-                </h3>
+        {/* Inventory stats/info panel */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          <div className="bg-gray-800 rounded-xl p-4 border border-gray-700">
+            <p className="text-gray-400 text-sm mb-1">Total Cars</p>
+            <p className="text-white text-2xl font-bold">{dealerCars.length}</p>
+          </div>
+          
+          <div className="bg-gray-800 rounded-xl p-4 border border-gray-700">
+            <p className="text-gray-400 text-sm mb-1">Listed For Sale</p>
+            <p className="text-white text-2xl font-bold">
+              {dealerCars.filter(car => car.forSale).length}
+            </p>
+          </div>
+          
+          <div className="bg-gray-800 rounded-xl p-4 border border-gray-700">
+            <p className="text-gray-400 text-sm mb-1">Vault Value</p>
+            <p className="text-white text-2xl font-bold flex items-center">
+              <svg 
+                className="h-5 w-5 mr-1 text-blue-400" 
+                viewBox="0 0 24 24" 
+                fill="currentColor"
+              >
+                <path d="M11.944 17.97L4.58 13.62 11.943 24l7.37-10.38-7.372 4.35h.003zM12.056 0L4.69 12.223l7.365 4.354 7.365-4.35L12.056 0z" />
+              </svg>
+              {dealerCars.reduce((total, car) => total + parseFloat(formatEther(car.price)), 0).toFixed(2)}
+            </p>
+          </div>
+        </div>
 
-                {/* Year as subtitle */}
-                <p className="text-blue-300 text-lg mb-3">
-                  {car.year.toString()}
-                </p>
-
-                {/* Car Details - better organized */}
-                <div className="text-gray-300 text-sm space-y-3 mb-5">
-                  <div className="flex items-center">
-                    <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center mr-3">
-                      <svg
-                        className="w-4 h-4 text-gray-400"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0"
-                        />
-                      </svg>
+        {/* Main content */}
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center py-16 bg-gray-800 bg-opacity-50 rounded-xl border border-gray-700">
+            <Loader2 className="h-10 w-10 text-blue-500 animate-spin mb-4" />
+            <p className="text-gray-300">Loading your car inventory...</p>
+          </div>
+        ) : dealerCars.length === 0 ? (
+          <div className="bg-gray-800 bg-opacity-50 border border-gray-700 rounded-xl p-16 text-center">
+            <div className="w-20 h-20 mx-auto bg-gray-700 rounded-full flex items-center justify-center mb-6">
+              <Car className="h-10 w-10 text-gray-400" />
+            </div>
+            <h3 className="text-xl font-bold text-white mb-2">Your Garage is Empty</h3>
+            <p className="text-gray-400 mb-6 max-w-md mx-auto">
+              You haven't minted any car NFTs yet. Start building your collection by minting your first car.
+            </p>
+            <button
+              onClick={() => setActiveTab("mint")}
+              className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg hover:from-blue-600 hover:to-purple-700 transition-all"
+            >
+              Mint Your First Car NFT
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {dealerCars.map((car) => (
+              <div
+                key={car.id}
+                className="group bg-gray-800 rounded-xl overflow-hidden border border-gray-700 hover:border-blue-500 transition-all duration-300 shadow-lg hover:shadow-blue-900/20"
+              >
+                {/* Card Header with Image */}
+                <div className="relative h-56 overflow-hidden bg-gradient-to-br from-gray-900 to-gray-800">
+                  <div className="absolute inset-0 bg-blue-600/5 group-hover:bg-blue-600/10 transition-all duration-300"></div>
+                  {car.imageUrl ? (
+                    <img
+                      src={car.imageUrl}
+                      alt={`${car.make} ${car.model}`}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <Car className="w-16 h-16 text-gray-600" />
+                      <span className="absolute text-gray-500 mt-20">No Image Available</span>
                     </div>
-                    <span>
-                      <span className="text-gray-500">VIN:</span>{" "}
-                      <span className="font-medium">{car.vin}</span>
-                    </span>
+                  )}
+
+                  {/* Status badges */}
+                  <div className="absolute top-3 left-3 z-10">
+                    <div className="bg-black/70 backdrop-blur-sm px-3 py-1 rounded-full flex items-center gap-1">
+                      <Tag className="h-3 w-3 text-blue-400" />
+                      <span className="text-xs font-bold text-white">#{car.id}</span>
+                    </div>
                   </div>
 
-                  {/* Price with enhanced styling */}
-                  <div className="flex items-center">
-                    <div className="w-8 h-8 rounded-full bg-blue-900 flex items-center justify-center mr-3">
-                      <svg
-                        className="w-4 h-4 text-blue-300"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                      >
-                        <path
-                          d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
+                  <div className="absolute top-3 right-3 z-10">
+                    <div className={`px-3 py-1 rounded-full backdrop-blur-sm text-xs font-bold
+                      ${car.forSale 
+                        ? 'bg-green-500/90 text-white' 
+                        : 'bg-gray-700/90 text-gray-300'}`
+                    }>
+                      {car.forSale ? 'LISTED' : 'NOT LISTED'}
                     </div>
-                    <span className="text-lg font-semibold text-blue-400">
-                      {ethers.formatEther(car.price)} ETH
-                    </span>
+                  </div>
+
+                  {/* Price overlay at bottom */}
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-xl font-bold text-white">{car.make} {car.model}</h3>
+                      <div className="flex items-center text-blue-300 font-medium">
+                        <svg 
+                          className="h-4 w-4 mr-1" 
+                          viewBox="0 0 24 24" 
+                          fill="currentColor"
+                        >
+                          <path d="M11.944 17.97L4.58 13.62 11.943 24l7.37-10.38-7.372 4.35h.003zM12.056 0L4.69 12.223l7.365 4.354 7.365-4.35L12.056 0z" />
+                        </svg>
+                        {formatEther(car.price)}
+                      </div>
+                    </div>
                   </div>
                 </div>
 
-                {/* Action Button - improved styling and positioning */}
-                <div className="mt-auto">
+                {/* Card Body with Details */}
+                <div className="p-5">
+                  <div className="flex justify-between items-center mb-4">
+                    <span className="text-gray-400 text-sm">{car.year}</span>
+                    <div className="flex items-center text-gray-400 text-sm">
+                      <Clock className="h-3 w-3 mr-1" />
+                      <span>Minted</span>
+                    </div>
+                  </div>
+
+                  {/* VIN with nicer styling */}
+                  <div className="mb-5 py-3 px-4 bg-gray-900 rounded-lg border border-gray-700">
+                    <p className="text-xs text-gray-500 mb-1">Vehicle Identification</p>
+                    <p className="text-sm font-mono text-gray-300">{car.vin}</p>
+                  </div>
+
+                  {/* Action button */}
                   <button
-                    onClick={() => handleListing({ id: 1, price: car.price })}
-                    className="w-full py-3 bg-gradient-to-r from-blue-600 to-purple-700 text-white rounded-lg hover:from-blue-700 hover:to-purple-800 transition-all font-medium shadow-lg transform hover:-translate-y-1"
+                    onClick={() => handleListing({ id: car.id, price: car.price, make: car.make })}
+                    disabled={isConfirming}
+                    className={`w-full py-3 rounded-lg font-medium text-white transition-all
+                      ${car.forSale 
+                        ? 'bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700' 
+                        : 'bg-gradient-to-r from-blue-600 to-purple-700 hover:from-blue-700 hover:to-purple-800'} 
+                      ${isConfirming ? 'opacity-70 cursor-not-allowed' : ''}`
+                    }
                   >
-                    {car.forSale ? "Update Listing" : "List for Sale"}
+                    {isConfirming ? (
+                      <div className="flex items-center justify-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span>Processing...</span>
+                      </div>
+                    ) : (
+                      car.forSale ? "Update Listing" : "List for Sale"
+                    )}
                   </button>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
   );
 };
 

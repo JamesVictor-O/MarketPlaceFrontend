@@ -1,9 +1,12 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
 import { ethers } from "ethers";
 import useReadContract from "../utils/useReadContract";
 import {CONTEACT_ADDRESS} from "./../utils/contactAddress"
 import contractAbi from "./../contractAbi.json"
-import { useWriteContract } from "wagmi";
+
+import { useWriteContract} from "wagmi";
 
 
 
@@ -13,6 +16,8 @@ const DealerRegistrationForm: React.FC = ({}) => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [success, setSuccess] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const { writeContractAsync} = useWriteContract();
+  const navigate=useNavigate()
 
   
   const {data, loading}=useReadContract({
@@ -20,7 +25,7 @@ const DealerRegistrationForm: React.FC = ({}) => {
        format: (data) => ethers.formatEther(data as bigint), 
   });
 
-  const { writeContract } = useWriteContract()
+
   interface HandleSubmitEvent extends React.FormEvent<HTMLFormElement> {}
 
   const handleSubmit = async (e: HandleSubmitEvent): Promise<void> => {
@@ -37,7 +42,7 @@ const DealerRegistrationForm: React.FC = ({}) => {
       }
       const registrationFeeWei = ethers.parseEther(data);
 
-      const result = await writeContract({
+      const result = await writeContractAsync({
         address: CONTEACT_ADDRESS,
         abi: contractAbi,
         functionName: "registerDealer",
@@ -45,10 +50,17 @@ const DealerRegistrationForm: React.FC = ({}) => {
         value: registrationFeeWei,
       });
 
-      console.log("Transaction result:", result);
+      if (!result) {
+        throw new Error("Transaction failed to submit");
+      }
       setSuccess(true);
+      toast.success("Registration successful!!!");
+      
+      setTimeout(() => {
+        navigate("/dealersdashboard");
+      }, 3000); 
     } catch (error) {
-      console.error("Error during registration:", error);
+      toast.error("Error during registration: " + (error instanceof Error ? error.message : String(error)))
       setError(error instanceof Error ? error.message : "An unknown error occurred");
       setSuccess(false)
     } finally {
