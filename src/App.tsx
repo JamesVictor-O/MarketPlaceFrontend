@@ -10,7 +10,7 @@ import "@rainbow-me/rainbowkit/styles.css";
 import { getDefaultConfig, RainbowKitProvider } from "@rainbow-me/rainbowkit";
 import BuyersPage from "./page/BuyersPage";
 import Root from "./Root";
-import { sepolia } from "wagmi/chains";
+import { sepolia,baseSepolia } from "wagmi/chains";
 import CarDetailsPage from "./page/CarDetailPage";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ToastContainer} from 'react-toastify';
@@ -37,7 +37,7 @@ function App() {
   const config = getDefaultConfig({
     appName: "My RainbowKit App",
     projectId: "YOUR_PROJECT_ID",
-    chains: [sepolia],
+    chains: [baseSepolia],
   });
 
   return (
