@@ -6,16 +6,6 @@ import { toast } from "react-toastify";
 import { useWriteContract } from "wagmi";
 import DisplayDealersCar from "./DisplayDealersCar";
 
-interface Car {
-  id: number;
-  make: string;
-  model: string;
-  year: number;
-  vin: string;
-  price: string;
-  forSale: boolean;
-  imageUrl: string;
-}
 interface FileChangeEvent extends React.ChangeEvent<HTMLInputElement> {
   target: HTMLInputElement & { files: FileList };
 }

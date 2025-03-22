@@ -18,7 +18,7 @@ const LandingPage: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [fee, registered] = await Promise.all([
+        const [,registered] = await Promise.all([
           publicClient.readContract({
             address: CONTEACT_ADDRESS,
             abi: contractAbi,

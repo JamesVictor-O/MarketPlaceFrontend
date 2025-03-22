@@ -10,7 +10,7 @@ import "@rainbow-me/rainbowkit/styles.css";
 import { getDefaultConfig, RainbowKitProvider } from "@rainbow-me/rainbowkit";
 import BuyersPage from "./page/BuyersPage";
 import Root from "./Root";
-import { sepolia,baseSepolia } from "wagmi/chains";
+import {baseSepolia } from "wagmi/chains";
 import CarDetailsPage from "./page/CarDetailPage";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ToastContainer} from 'react-toastify';

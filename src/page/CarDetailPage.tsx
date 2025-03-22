@@ -44,9 +44,8 @@ const CarDetailsPage = () => {
   >("idle");
   const [errorMessage, setErrorMessage] = useState("");
   const { address, isConnected } = useAccount();
-  const navigate = useNavigate();
   
-  const { writeContract, isPending } = useWriteContract({
+  const { writeContract} = useWriteContract({
     mutation: {
       onSuccess: (hash) => {
         setTransactionStatus("pending");
@@ -124,7 +123,7 @@ const CarDetailsPage = () => {
         functionName: "buyCar",
         args: [car.id],
         
-        value: car.price,
+        value: BigInt(car.price),
       });
     } catch (error) {
       console.error("Purchase error:", error);
